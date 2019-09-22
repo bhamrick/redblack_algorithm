@@ -414,6 +414,9 @@ mod tests {
     use super::*;
 
     use std::cmp::Ordering;
+    use std::collections::HashSet;
+
+    use proptest::prelude::*;
 
     #[derive(Debug)]
     struct Node {
@@ -533,6 +536,23 @@ mod tests {
         }
     }
 
+    fn value_set(root: Option<&Node>) -> HashSet<i32> {
+        fn traverse(
+            node: Option<&Node>,
+            values: &mut HashSet<i32>,
+        ) {
+            if let Some(node) = node {
+                values.insert(node.data);
+                traverse(node.left.0.as_ref().map(Box::as_ref), values);
+                traverse(node.right.0.as_ref().map(Box::as_ref), values);
+            }
+        }
+
+        let mut values = HashSet::new();
+        traverse(root, &mut values);
+        values
+    }
+
     #[test]
     fn inserts() {
         let mut root: Option<Node> = None;
@@ -562,18 +582,42 @@ mod tests {
         let insert_order = [3, 2, 1, 4, 5, 6];
         let delete_order = [4, 6, 2, 5, 1, 3];
         let mut root = None;
+        let mut expected_values = HashSet::new();
         for x in insert_order.iter().cloned() {
             root = Some(insert(root, &mut locate(x), x, &mut ()));
+            expected_values.insert(x);
+            check_invariants(root.as_ref());
+            check_ordering(root.as_ref());
+            assert!(value_set(root.as_ref()) == expected_values);
+        }
+        for x in delete_order.iter().cloned() {
+            root = delete(root, &mut locate(x), &mut ());
             check_invariants(root.as_ref());
             check_ordering(root.as_ref());
         }
-        println!("{:?}", root);
-        for x in delete_order.iter().cloned() {
-            println!("Delete {}", x);
-            root = delete(root, &mut locate(x), &mut ());
-            println!("{:?}", root);
-            check_invariants(root.as_ref());
-            check_ordering(root.as_ref());
+    }
+
+    static VALUES: &'static [i32] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+    proptest! {
+        #[test]
+        fn insert_and_delete_props(
+            insert_order in Just(VALUES.to_owned()).prop_shuffle(),
+            delete_order in Just(VALUES.to_owned()).prop_shuffle(),
+        ) {
+            let mut root = None;
+            let mut expected_values = HashSet::new();
+            for x in insert_order.iter().cloned() {
+                root = Some(insert(root, &mut locate(x), x, &mut ()));
+                expected_values.insert(x);
+                check_invariants(root.as_ref());
+                check_ordering(root.as_ref());
+                assert!(value_set(root.as_ref()) == expected_values);
+            }
+            for x in delete_order.iter().cloned() {
+                root = delete(root, &mut locate(x), &mut ());
+                check_invariants(root.as_ref());
+                check_ordering(root.as_ref());
+            }
         }
     }
 }
