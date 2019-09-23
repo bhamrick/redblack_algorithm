@@ -39,40 +39,25 @@ impl PackContext<i32, usize> for PersistentTree {
 
 impl PersistentTree {
     fn new() -> PersistentTree {
-        PersistentTree {
-            nodes: Vec::new(),
-        }
+        PersistentTree { nodes: Vec::new() }
     }
 
     fn insert(&mut self, root: Option<usize>, value: i32) -> usize {
-        let mut locate = |node: &RedBlackData<i32, usize>, _| {
-            match value.cmp(&node.data) {
-                Ordering::Less => Some((Direction::Left, ())),
-                Ordering::Equal => None,
-                Ordering::Greater => Some((Direction::Right, ())),
-            }
+        let mut locate = |node: &RedBlackData<i32, usize>, _| match value.cmp(&node.data) {
+            Ordering::Less => Some((Direction::Left, ())),
+            Ordering::Equal => None,
+            Ordering::Greater => Some((Direction::Right, ())),
         };
-        insert(
-            root,
-            &mut locate,
-            value,
-            self,
-        )
+        insert(root, &mut locate, value, self)
     }
 
     fn remove(&mut self, root: Option<usize>, value: i32) -> Option<usize> {
-        let mut locate = |node: &RedBlackData<i32, usize>, _| {
-            match value.cmp(&node.data) {
-                Ordering::Less => Some((Direction::Left, ())),
-                Ordering::Equal => None,
-                Ordering::Greater => Some((Direction::Right, ())),
-            }
+        let mut locate = |node: &RedBlackData<i32, usize>, _| match value.cmp(&node.data) {
+            Ordering::Less => Some((Direction::Left, ())),
+            Ordering::Equal => None,
+            Ordering::Greater => Some((Direction::Right, ())),
         };
-        delete(
-            root,
-            &mut locate,
-            self,
-        )
+        delete(root, &mut locate, self)
     }
 }
 
@@ -81,12 +66,12 @@ fn main() {
     let mut roots = Vec::new();
     roots.push(None);
     let mut root = None;
-    for i in 1 .. 10 {
+    for i in 1..10 {
         let new_root = Some(tree.insert(root, i));
         roots.push(new_root);
         root = new_root;
     }
-    for i in 1 .. 10 {
+    for i in 1..10 {
         let new_root = tree.remove(root, i);
         roots.push(new_root);
         root = new_root;

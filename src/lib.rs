@@ -36,21 +36,22 @@ pub trait PackContext<T, N> {
 }
 
 /// Insert data into the tree and returns the new root node.
-/// 
+///
 /// * `locate` is a function that directs us to the location where the insertion
 /// should happen. The LA parameter is available as an accumulator to track data
 /// during the downward traversal.
 /// * `data` is the data to insert.
 /// * `context` is a structure that is able to convert nodes to and from their
 ///   corresponding data.
-pub fn insert<L, LA, C, T, N> (root: Option<N>, locate: &mut L, data: T, context: &mut C) -> N where
+pub fn insert<L, LA, C, T, N>(root: Option<N>, locate: &mut L, data: T, context: &mut C) -> N
+where
     L: FnMut(&RedBlackData<T, N>, Option<LA>) -> Option<(Direction, LA)>,
-    C: PackContext<T, N>
+    C: PackContext<T, N>,
 {
     // Find the insertion location and keep track of the path we took there.
     let mut zipper: Zipper<T, N> = Zipper {
         path: Vec::new(),
-        node: root.map(|r| { context.unpack(r) }),
+        node: root.map(|r| context.unpack(r)),
     };
     let mut locate_acc = None;
     loop {
@@ -60,7 +61,7 @@ pub fn insert<L, LA, C, T, N> (root: Option<N>, locate: &mut L, data: T, context
         };
         match locate_result {
             Some((dir, new_acc)) => {
-                zipper.down(dir, &mut |x| { context.unpack(x) });
+                zipper.down(dir, &mut |x| context.unpack(x));
                 locate_acc = Some(new_acc);
             }
             None => break,
@@ -85,8 +86,8 @@ pub fn insert<L, LA, C, T, N> (root: Option<N>, locate: &mut L, data: T, context
         // is a child of the root, so no work needs to be done.
         while zipper.path.len() >= 2 {
             let l = zipper.path.len();
-            let parent_color = zipper.path[l-2].step.1;
-            let uncle_color = zipper.path[l-2].sibling.1;
+            let parent_color = zipper.path[l - 2].step.1;
+            let uncle_color = zipper.path[l - 2].sibling.1;
 
             match parent_color {
                 Color::Black => {
@@ -100,34 +101,34 @@ pub fn insert<L, LA, C, T, N> (root: Option<N>, locate: &mut L, data: T, context
                             // Case 2: Parent is red and uncle is red
                             // Color both of them black, color the grandparent red if it's not
                             // the root, and loop.
-                            zipper.path[l-2].step.1 = Color::Black;
-                            zipper.path[l-2].sibling.1 = Color::Black;
+                            zipper.path[l - 2].step.1 = Color::Black;
+                            zipper.path[l - 2].sibling.1 = Color::Black;
                             if l >= 3 {
-                                zipper.path[l-3].step.1 = Color::Red;
+                                zipper.path[l - 3].step.1 = Color::Red;
                             }
-                            zipper.up(&mut |x| { context.pack(x) });
-                            zipper.up(&mut |x| { context.pack(x) });
+                            zipper.up(&mut |x| context.pack(x));
+                            zipper.up(&mut |x| context.pack(x));
                         }
                         Color::Black => {
                             // Case 3: Parent is red and uncle is black.
                             // Case 3.1: If the node is "inside" (left child of
                             // right child or vice versa), perform a tree rotation
                             // so that it is on the outside.
-                            if zipper.path[l-2].step.0 != zipper.path[l-1].step.0 {
+                            if zipper.path[l - 2].step.0 != zipper.path[l - 1].step.0 {
                                 zipper.rotate();
                             }
                             // Rotate the parent, recolor previous parent to black,
                             // and previous grandparent to red.
-                            zipper.up(&mut |x| { context.pack(x) });
+                            zipper.up(&mut |x| context.pack(x));
                             zipper.rotate();
                             // After the rotation, the zipper is focused on what
                             // used to be the grandparent.
                             let l = zipper.path.len();
                             if l >= 1 {
-                                zipper.path[l-1].step.1 = Color::Red;
+                                zipper.path[l - 1].step.1 = Color::Red;
                             }
                             if l >= 2 {
-                                zipper.path[l-2].step.1 = Color::Black;
+                                zipper.path[l - 2].step.1 = Color::Black;
                             }
                         }
                     }
@@ -137,20 +138,21 @@ pub fn insert<L, LA, C, T, N> (root: Option<N>, locate: &mut L, data: T, context
     }
 
     while !zipper.path.is_empty() {
-        zipper.up(&mut |x| { context.pack(x) });
+        zipper.up(&mut |x| context.pack(x));
     }
 
     context.pack(zipper.node.unwrap())
 }
 
-pub fn delete<L, LA, C, T, N> (root: Option<N>, locate: &mut L, context: &mut C) -> Option<N> where
+pub fn delete<L, LA, C, T, N>(root: Option<N>, locate: &mut L, context: &mut C) -> Option<N>
+where
     L: FnMut(&RedBlackData<T, N>, Option<LA>) -> Option<(Direction, LA)>,
     C: PackContext<T, N>,
 {
     // Find node to delete.
     let mut zipper: Zipper<T, N> = Zipper {
         path: Vec::new(),
-        node: root.map(|r| { context.unpack(r) }),
+        node: root.map(|r| context.unpack(r)),
     };
     let mut locate_acc = None;
     loop {
@@ -160,7 +162,7 @@ pub fn delete<L, LA, C, T, N> (root: Option<N>, locate: &mut L, context: &mut C)
         };
         match locate_result {
             Some((dir, new_acc)) => {
-                zipper.down(dir, &mut |x| { context.unpack(x) });
+                zipper.down(dir, &mut |x| context.unpack(x));
                 locate_acc = Some(new_acc);
             }
             None => break,
@@ -176,11 +178,14 @@ pub fn delete<L, LA, C, T, N> (root: Option<N>, locate: &mut L, context: &mut C)
         }
         if needs_swap {
             let swap_index = zipper.path.len();
-            zipper.down(Direction::Left, &mut |x| { context.unpack(x) });
+            zipper.down(Direction::Left, &mut |x| context.unpack(x));
             while zipper.node.as_ref().unwrap().right.0.is_some() {
-                zipper.down(Direction::Right, &mut |x| { context.unpack(x) });
+                zipper.down(Direction::Right, &mut |x| context.unpack(x));
             }
-            std::mem::swap(&mut zipper.path[swap_index].data, &mut zipper.node.as_mut().unwrap().data);
+            std::mem::swap(
+                &mut zipper.path[swap_index].data,
+                &mut zipper.node.as_mut().unwrap().data,
+            );
         }
 
         // Replace node with its child. If the child was black,
@@ -188,10 +193,10 @@ pub fn delete<L, LA, C, T, N> (root: Option<N>, locate: &mut L, context: &mut C)
         let mut add_black = false;
         if let Some(node) = zipper.node {
             if node.left.0.is_some() {
-                zipper.node = node.left.0.map(|x| { context.unpack(x) });
+                zipper.node = node.left.0.map(|x| context.unpack(x));
                 add_black = node.left.1 == Color::Black;
             } else {
-                zipper.node = node.right.0.map(|x| { context.unpack(x) });
+                zipper.node = node.right.0.map(|x| context.unpack(x));
                 add_black = node.right.1 == Color::Black;
             }
         }
@@ -217,7 +222,7 @@ pub fn delete<L, LA, C, T, N> (root: Option<N>, locate: &mut L, context: &mut C)
                                     zipper.path.push(ZipperStep {
                                         data: s.data,
                                         step: (sibling_direction, s.sibling.1),
-                                        sibling: (node.map(|x| { context.pack(x) }), s.step.1),
+                                        sibling: (node.map(|x| context.pack(x)), s.step.1),
                                     });
                                     // The black height invariant ensures that
                                     // the sibling is never empty. Since we have
@@ -237,14 +242,14 @@ pub fn delete<L, LA, C, T, N> (root: Option<N>, locate: &mut L, context: &mut C)
                                         Some(red_direction) => {
                                             // If there is a red child, first
                                             // focus the zipper there.
-                                            zipper.down(red_direction, &mut |x| { context.unpack(x) });
+                                            zipper.down(red_direction, &mut |x| context.unpack(x));
                                             zipper.path.last_mut().unwrap().step.1 = Color::Black;
                                             if sibling_direction == red_direction {
-                                                zipper.up(&mut |x| { context.pack(x) });
+                                                zipper.up(&mut |x| context.pack(x));
                                                 zipper.rotate();
                                             } else {
                                                 zipper.rotate();
-                                                zipper.up(&mut |x| { context.pack(x) });
+                                                zipper.up(&mut |x| context.pack(x));
                                                 zipper.rotate();
                                             }
                                             add_black = false;
@@ -257,7 +262,7 @@ pub fn delete<L, LA, C, T, N> (root: Option<N>, locate: &mut L, context: &mut C)
                                             if let Some(s) = zipper.path.last_mut() {
                                                 s.step.1 = Color::Red;
                                             }
-                                            zipper.up(&mut |x| { context.pack(x) });
+                                            zipper.up(&mut |x| context.pack(x));
                                         }
                                     }
                                 }
@@ -307,10 +312,10 @@ pub fn delete<L, LA, C, T, N> (root: Option<N>, locate: &mut L, context: &mut C)
     }
 
     while !zipper.path.is_empty() {
-        zipper.up(&mut |x| { context.pack(x) });
+        zipper.up(&mut |x| context.pack(x));
     }
 
-    zipper.node.map(|r| { context.pack(r) })
+    zipper.node.map(|r| context.pack(r))
 }
 
 // Internal structures
@@ -327,7 +332,8 @@ struct Zipper<T, N> {
 
 impl<T, N> Zipper<T, N> {
     fn up<P>(&mut self, pack: &mut P)
-        where P: FnMut(RedBlackData<T, N>) -> N
+    where
+        P: FnMut(RedBlackData<T, N>) -> N,
     {
         if let Some(step) = self.path.pop() {
             let packed_node = self.node.take().map(pack);
@@ -347,7 +353,8 @@ impl<T, N> Zipper<T, N> {
     }
 
     fn down<U>(&mut self, dir: Direction, unpack: &mut U)
-        where U: FnMut(N) -> RedBlackData<T, N>
+    where
+        U: FnMut(N) -> RedBlackData<T, N>,
     {
         if let Some(n) = self.node.take() {
             match dir {
@@ -425,13 +432,13 @@ mod tests {
         right: (Option<Box<Node>>, Color),
     }
 
-    fn locate(x: i32) -> impl FnMut(&RedBlackData<i32, Node>, Option<()>) -> Option<(Direction, ())> {
-        move |n, _| {
-            match x.cmp(&n.data) {
-                Ordering::Less => Some((Direction::Left, ())),
-                Ordering::Equal => None,
-                Ordering::Greater => Some((Direction::Right, ())),
-            }
+    fn locate(
+        x: i32,
+    ) -> impl FnMut(&RedBlackData<i32, Node>, Option<()>) -> Option<(Direction, ())> {
+        move |n, _| match x.cmp(&n.data) {
+            Ordering::Less => Some((Direction::Left, ())),
+            Ordering::Equal => None,
+            Ordering::Greater => Some((Direction::Right, ())),
         }
     }
 
@@ -447,8 +454,8 @@ mod tests {
         fn unpack(&mut self, node: Node) -> RedBlackData<i32, Node> {
             RedBlackData {
                 data: node.data,
-                left: (node.left.0.map(|x| { *x }), node.left.1),
-                right: (node.right.0.map(|x| { *x }), node.right.1),
+                left: (node.left.0.map(|x| *x), node.left.1),
+                right: (node.right.0.map(|x| *x), node.right.1),
             }
         }
     }
@@ -479,7 +486,7 @@ mod tests {
                         black_depths,
                         match node.left.1 {
                             Color::Red => black_depth,
-                            Color::Black => black_depth+1,
+                            Color::Black => black_depth + 1,
                         },
                         node.left.1,
                     );
@@ -488,7 +495,7 @@ mod tests {
                         black_depths,
                         match node.right.1 {
                             Color::Red => black_depth,
-                            Color::Black => black_depth+1,
+                            Color::Black => black_depth + 1,
                         },
                         node.right.1,
                     );
@@ -510,11 +517,7 @@ mod tests {
     fn check_ordering(root: Option<&Node>) {
         // For each node, check that each value in the left subtree is lesser
         // and each value in the right subtree is greater.
-        fn traverse(
-            node: Option<&Node>,
-            lower_bound: Option<i32>,
-            upper_bound: Option<i32>,
-        ) {
+        fn traverse(node: Option<&Node>, lower_bound: Option<i32>, upper_bound: Option<i32>) {
             if let Some(node) = node {
                 if let Some(lower_bound) = lower_bound {
                     assert!(node.data > lower_bound);
@@ -537,10 +540,7 @@ mod tests {
     }
 
     fn value_set(root: Option<&Node>) -> HashSet<i32> {
-        fn traverse(
-            node: Option<&Node>,
-            values: &mut HashSet<i32>,
-        ) {
+        fn traverse(node: Option<&Node>, values: &mut HashSet<i32>) {
             if let Some(node) = node {
                 values.insert(node.data);
                 traverse(node.left.0.as_ref().map(Box::as_ref), values);
@@ -570,7 +570,7 @@ mod tests {
         root = Some(insert(root, &mut locate(3), 3, &mut ()));
         check_invariants(root.as_ref());
         check_ordering(root.as_ref());
-        for i in 1 .. 100 {
+        for i in 1..100 {
             root = Some(insert(root, &mut locate(i), i, &mut ()));
             check_invariants(root.as_ref());
             check_ordering(root.as_ref());
@@ -597,7 +597,9 @@ mod tests {
         }
     }
 
-    static VALUES: &'static [i32] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+    static VALUES: &'static [i32] = &[
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18
+    ];
     proptest! {
         #[test]
         fn insert_and_delete_props(
