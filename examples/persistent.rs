@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 use std::cmp::Ordering;
 
-use redblack::*;
+use redblack_algorithm::*;
 
 #[derive(Debug)]
 struct Node {

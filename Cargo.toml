@@ -1,5 +1,5 @@
 [package]
-name = "redblack"
+name = "redblack-algorithm"
 version = "0.1.0"
 authors = ["Brian Hamrick <brian.c.hamrick@gmail.com>"]
 edition = "2018"

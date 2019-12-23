@@ -516,10 +516,10 @@ mod tests {
         fn traverse(node: Option<&Node>, lower_bound: Option<i32>, upper_bound: Option<i32>) {
             if let Some(node) = node {
                 if let Some(lower_bound) = lower_bound {
-                    assert!(node.data > lower_bound);
+                    assert!(node.data >= lower_bound);
                 }
                 if let Some(upper_bound) = upper_bound {
-                    assert!(node.data < upper_bound);
+                    assert!(node.data <= upper_bound);
                 }
                 traverse(
                     node.left.0.as_ref().map(Box::as_ref),
@@ -533,6 +533,8 @@ mod tests {
                 );
             }
         }
+
+        traverse(root, None, None)
     }
 
     fn value_set(root: Option<&Node>) -> HashSet<i32> {
