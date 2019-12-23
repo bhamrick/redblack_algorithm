@@ -8,9 +8,7 @@ use redblack_algorithm::*;
 #[derive(Debug)]
 struct Object {
     data: (),
-    rb_key: i32,
-    rb_left: (Option<usize>, Color),
-    rb_right: (Option<usize>, Color),
+    rb_data: Option<RedBlackData<i32, usize>>,
 }
 
 struct RbTree<'a>(&'a mut Vec<Object>);
@@ -22,21 +20,25 @@ struct ObjectData {
 
 impl<'a> PackContext<ObjectData, usize> for RbTree<'a> {
     fn unpack(&mut self, index: usize) -> RedBlackData<ObjectData, usize> {
-        let obj = &self.0[index];
+        let obj = &mut self.0[index];
+        let rb_data = obj.rb_data.take().expect("Cannot unpack node that's not in the tree");
         RedBlackData {
             data: ObjectData {
                 index,
-                key: obj.rb_key,
+                key: rb_data.data,
             },
-            left: obj.rb_left,
-            right: obj.rb_right,
+            left: rb_data.left,
+            right: rb_data.right,
         }
     }
 
     fn pack(&mut self, data: RedBlackData<ObjectData, usize>) -> usize {
         let obj = &mut self.0[data.data.index];
-        obj.rb_left = data.left;
-        obj.rb_right = data.right;
+        obj.rb_data = Some(RedBlackData {
+            data: data.data.key,
+            left: data.left,
+            right: data.right,
+        });
         data.data.index
     }
 }
@@ -47,9 +49,7 @@ fn main() {
     for i in 1..10 {
         objects.push(Object {
             data: (),
-            rb_key: i,
-            rb_left: (None, Color::Black),
-            rb_right: (None, Color::Black),
+            rb_data: None,
         });
         let mut locate = |node: &RedBlackData<ObjectData, usize>, _| match i.cmp(&node.data.key) {
             Ordering::Less => Some((Direction::Left, ())),
