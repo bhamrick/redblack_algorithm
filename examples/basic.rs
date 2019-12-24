@@ -37,9 +37,7 @@ struct Tree {
 
 impl Tree {
     fn new() -> Tree {
-        Tree {
-            root: None,
-        }
+        Tree { root: None }
     }
 
     fn insert(&mut self, x: i32) {

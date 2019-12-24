@@ -23,7 +23,10 @@ struct ObjectData {
 impl<'a> PackContext<ObjectData, usize> for RbTree<'a> {
     fn unpack(&mut self, index: usize) -> RedBlackData<ObjectData, usize> {
         let obj = &mut self.0[index];
-        let rb_data = obj.rb_data.take().expect("Cannot unpack node that's not in the tree");
+        let rb_data = obj
+            .rb_data
+            .take()
+            .expect("Cannot unpack node that's not in the tree");
         RedBlackData {
             data: ObjectData {
                 index,
@@ -61,7 +64,10 @@ fn main() {
         root = Some(insert(
             root,
             &mut locate,
-            ObjectData { index: objects.len() - 1, key: i },
+            ObjectData {
+                index: objects.len() - 1,
+                key: i,
+            },
             &mut RbTree(&mut objects),
         ));
     }
@@ -74,7 +80,7 @@ fn main() {
     // Delete the resulting root, to demonstrate that it works.
     root = delete(
         root,
-        &mut |_, _: Option<()>| { None },
+        &mut |_, _: Option<()>| None,
         &mut RbTree(&mut objects),
     );
 
