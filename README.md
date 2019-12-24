@@ -1,3 +1,5 @@
+# redblack\_algorithm
+
 `redblack_algorithm` is a generic implementation of a [red-black
 tree](https://en.wikipedia.org/wiki/Red%E2%80%93black_tree).  The red-black
 algorithm is very useful as a general way to keep a tree balanced in many
