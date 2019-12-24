@@ -482,8 +482,8 @@ mod tests {
     #[derive(Debug)]
     struct Node {
         data: i32,
-        left: (Option<Box<Node>>, Color),
-        right: (Option<Box<Node>>, Color),
+        left: Option<(Box<Node>, Color)>,
+        right: Option<(Box<Node>, Color)>,
     }
 
     fn locate(
@@ -498,22 +498,18 @@ mod tests {
 
     impl PackContext<i32, Node> for () {
         fn pack(&mut self, data: RedBlackData<i32, Node>) -> Node {
-            let left_color = color(&data.left);
-            let right_color = color(&data.right);
             Node {
                 data: data.data,
-                left: (data.left.map(|(n, _)| Box::new(n)), left_color),
-                right: (data.right.map(|(n, _)| Box::new(n)), right_color),
+                left: data.left.map(|(n, c)| (Box::new(n), c)),
+                right: data.right.map(|(n, c)| (Box::new(n), c)),
             }
         }
 
         fn unpack(&mut self, node: Node) -> RedBlackData<i32, Node> {
-            let left_color = node.left.1;
-            let right_color = node.right.1;
             RedBlackData {
                 data: node.data,
-                left: node.left.0.map(|x| (*x, left_color)),
-                right: node.right.0.map(|x| (*x, right_color)),
+                left: node.left.map(|(x, c)| (*x, c)),
+                right: node.right.map(|(x, c)| (*x, c)),
             }
         }
     }
@@ -527,35 +523,35 @@ mod tests {
             node: Option<&Node>,
             black_depths: &mut Vec<i32>,
             black_depth: i32,
-            color: Color,
+            link_color: Color,
         ) {
             match node {
                 None => {
-                    assert!(color == Color::Black);
+                    assert!(link_color == Color::Black);
                     black_depths.push(black_depth);
                 }
                 Some(node) => {
-                    if color == Color::Red {
-                        assert!(node.left.1 == Color::Black);
-                        assert!(node.right.1 == Color::Black);
+                    if link_color == Color::Red {
+                        assert!(color(&node.left) == Color::Black);
+                        assert!(color(&node.right) == Color::Black);
                     }
                     traverse(
-                        node.left.0.as_ref().map(Box::as_ref),
+                        node.left.as_ref().map(|(n, _)| n.as_ref()),
                         black_depths,
-                        match node.left.1 {
+                        match color(&node.left) {
                             Color::Red => black_depth,
                             Color::Black => black_depth + 1,
                         },
-                        node.left.1,
+                        color(&node.left),
                     );
                     traverse(
-                        node.right.0.as_ref().map(Box::as_ref),
+                        node.right.as_ref().map(|(n, _)| n.as_ref()),
                         black_depths,
-                        match node.right.1 {
+                        match color(&node.right) {
                             Color::Red => black_depth,
                             Color::Black => black_depth + 1,
                         },
-                        node.right.1,
+                        color(&node.right),
                     );
                 }
             }
@@ -584,12 +580,12 @@ mod tests {
                     assert!(node.data <= upper_bound);
                 }
                 traverse(
-                    node.left.0.as_ref().map(Box::as_ref),
+                    node.left.as_ref().map(|(n, _)| n.as_ref()),
                     lower_bound,
                     Some(node.data),
                 );
                 traverse(
-                    node.right.0.as_ref().map(Box::as_ref),
+                    node.right.as_ref().map(|(n, _)| n.as_ref()),
                     Some(node.data),
                     upper_bound,
                 );
@@ -603,8 +599,8 @@ mod tests {
         fn traverse(node: Option<&Node>, values: &mut HashSet<i32>) {
             if let Some(node) = node {
                 values.insert(node.data);
-                traverse(node.left.0.as_ref().map(Box::as_ref), values);
-                traverse(node.right.0.as_ref().map(Box::as_ref), values);
+                traverse(node.left.as_ref().map(|(n, _)| n.as_ref()), values);
+                traverse(node.right.as_ref().map(|(n, _)| n.as_ref()), values);
             }
         }
 
