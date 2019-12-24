@@ -181,6 +181,9 @@ where
         zipper.up(&mut |x| context.pack(x));
     }
 
+    // Unwrap: After the above loop, zipper always points to the root of the
+    // tree if it exists, and the tree cannot be empty because we would have
+    // inserted a node into an empty tree.
     context.pack(zipper.node.unwrap())
 }
 
@@ -224,11 +227,13 @@ where
         if needs_swap {
             let swap_index = zipper.path.len();
             zipper.down(Direction::Left, &mut |x| context.unpack(x));
+            // Unwrap: zipper.node.is_some() checked above.
             while zipper.node.as_ref().unwrap().right.is_some() {
                 zipper.down(Direction::Right, &mut |x| context.unpack(x));
             }
             std::mem::swap(
                 &mut zipper.path[swap_index].data,
+                // Unwrap: zipper.node.is_some() checked above.
                 &mut zipper.node.as_mut().unwrap().data,
             );
         }
@@ -288,6 +293,8 @@ where
                                             // If there is a red child, first
                                             // focus the zipper there.
                                             zipper.down(red_direction, &mut |x| context.unpack(x));
+                                            // Unwrap: zipper.path is always
+                                            // nonempty after a call to down()
                                             zipper.path.last_mut().unwrap().step.1 = Color::Black;
                                             if sibling_direction == red_direction {
                                                 zipper.up(&mut |x| context.pack(x));
@@ -315,8 +322,8 @@ where
                                     // Red sibling, rebuild this tree and loop.
                                     // On the next iteration, we'll always fall
                                     // into a black sibling case and make
-                                    // progress up the tree.  Unwrap: Sibling is
-                                    // never empty because it is red.
+                                    // progress up the tree.
+                                    // Unwrap: Sibling is never empty because it is red.
                                     let unpacked_sibling = context.unpack(s.sibling.unwrap().0);
                                     match s.step.0 {
                                         Direction::Left => {
