@@ -1,3 +1,6 @@
+//! An intrusive red-black tree, meaning the tree information is stored within objects that are
+//! managed externally.
+
 use std::cmp::Ordering;
 
 use redblack_algorithm::*;
@@ -8,13 +11,15 @@ struct Object {
     rb_data: Option<RedBlackData<i32, usize>>,
 }
 
-struct RbTree<'a>(&'a mut Vec<Object>);
+struct RbTree<'a>(&'a mut [Object]);
 
 struct ObjectData {
     index: usize,
     key: i32,
 }
 
+// The PackContext here gives us access to a slice of objects that we can index into, but unlike in
+// the persistent example, we don't allocate new objects and instead modify the existing ones.
 impl<'a> PackContext<ObjectData, usize> for RbTree<'a> {
     fn unpack(&mut self, index: usize) -> RedBlackData<ObjectData, usize> {
         let obj = &mut self.0[index];

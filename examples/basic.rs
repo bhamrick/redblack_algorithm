@@ -1,3 +1,5 @@
+//! This example creates a basic binary search tree using Box for parent-child links.
+
 use std::cmp::Ordering;
 
 use redblack_algorithm::*;
@@ -9,6 +11,7 @@ struct Node {
     right: Option<(Box<Node>, Color)>,
 }
 
+// No special context is required to convert between Box<Node> and RedBlackData<i32, Box<Node>>.
 impl PackContext<i32, Box<Node>> for () {
     fn unpack(&mut self, node: Box<Node>) -> RedBlackData<i32, Box<Node>> {
         RedBlackData {

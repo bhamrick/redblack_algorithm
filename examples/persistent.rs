@@ -1,7 +1,10 @@
+//! A persistent red-black tree where the nodes are stored contiguously in a Vec.
+
 use std::cmp::Ordering;
 
 use redblack_algorithm::*;
 
+// The left and right child links have their node represented by an index into the Vec of all nodes.
 #[derive(Debug)]
 struct Node {
     key: i32,
@@ -14,6 +17,8 @@ struct PersistentTree {
     nodes: Vec<Node>,
 }
 
+// Pack needs to be able to create new nodes, so in this case our PackContext is the
+// PersistentTree, which gives access to the Vec of nodes.
 impl PackContext<i32, usize> for PersistentTree {
     fn unpack(&mut self, index: usize) -> RedBlackData<i32, usize> {
         let n = &self.nodes[index];
