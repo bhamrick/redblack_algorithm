@@ -47,6 +47,7 @@ pub struct RedBlackData<T, N> {
     pub right: Option<(N, Color)>,
 }
 
+/// Left or Right
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd, Hash, Copy, Clone)]
 pub enum Direction {
     Left,
@@ -62,12 +63,14 @@ impl Direction {
     }
 }
 
+/// Red or Black
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd, Hash, Copy, Clone)]
 pub enum Color {
     Red,
     Black,
 }
 
+/// State needed to convert between `N` and `RedBlackData<T, N>`
 pub trait PackContext<T, N> {
     fn pack(&mut self, data: RedBlackData<T, N>) -> N;
     fn unpack(&mut self, node: N) -> RedBlackData<T, N>;
