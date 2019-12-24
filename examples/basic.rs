@@ -8,8 +8,8 @@ use redblack_algorithm::*;
 #[derive(Debug)]
 struct Node {
     key: i32,
-    left: (Option<Box<Node>>, Color),
-    right: (Option<Box<Node>>, Color),
+    left: Option<(Box<Node>, Color)>,
+    right: Option<(Box<Node>, Color)>,
 }
 
 impl PackContext<i32, Box<Node>> for () {

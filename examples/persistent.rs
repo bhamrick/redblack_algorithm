@@ -8,8 +8,8 @@ use redblack_algorithm::*;
 #[derive(Debug)]
 struct Node {
     key: i32,
-    left: (Option<usize>, Color),
-    right: (Option<usize>, Color),
+    left: Option<(usize, Color)>,
+    right: Option<(usize, Color)>,
 }
 
 #[derive(Debug)]

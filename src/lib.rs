@@ -36,11 +36,15 @@
 ///
 /// * `T` is the type of data being stored.
 /// * `N` is the representation of a packed node.
+///
+/// Here we take a slightly different approach to coloring nodes than standard
+/// presentations.  Instead of the color being stored on a node, it is stored on
+/// the link from a parent to a child, which saves us some packs and unpacks.
 #[derive(Debug)]
 pub struct RedBlackData<T, N> {
     pub data: T,
-    pub left: (Option<N>, Color),
-    pub right: (Option<N>, Color),
+    pub left: Option<(N, Color)>,
+    pub right: Option<(N, Color)>,
 }
 
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd, Hash, Copy, Clone)]
@@ -106,8 +110,8 @@ where
     if let None = zipper.node {
         zipper.node = Some(RedBlackData {
             data,
-            left: (None, Color::Black),
-            right: (None, Color::Black),
+            left: None,
+            right: None,
         });
 
         // If this isn't the new root (because the tree is empty), it starts out as red.
@@ -121,7 +125,7 @@ where
         while zipper.path.len() >= 2 {
             let l = zipper.path.len();
             let parent_color = zipper.path[l - 2].step.1;
-            let uncle_color = zipper.path[l - 2].sibling.1;
+            let uncle_color = color(&zipper.path[l - 2].sibling);
 
             match parent_color {
                 Color::Black => {
@@ -136,7 +140,9 @@ where
                             // Color both of them black, color the grandparent red if it's not
                             // the root, and loop.
                             zipper.path[l - 2].step.1 = Color::Black;
-                            zipper.path[l - 2].sibling.1 = Color::Black;
+                            // Unwrap: Since the uncle color is red, the uncle
+                            // node must exist.
+                            zipper.path[l - 2].sibling.as_mut().unwrap().1 = Color::Black;
                             if l >= 3 {
                                 zipper.path[l - 3].step.1 = Color::Red;
                             }
@@ -213,12 +219,12 @@ where
         // If neither child is empty, swap with the predecessor
         let mut needs_swap = false;
         if let Some(ref n) = zipper.node {
-            needs_swap = n.left.0.is_some() && n.right.0.is_some();
+            needs_swap = n.left.is_some() && n.right.is_some();
         }
         if needs_swap {
             let swap_index = zipper.path.len();
             zipper.down(Direction::Left, &mut |x| context.unpack(x));
-            while zipper.node.as_ref().unwrap().right.0.is_some() {
+            while zipper.node.as_ref().unwrap().right.is_some() {
                 zipper.down(Direction::Right, &mut |x| context.unpack(x));
             }
             std::mem::swap(
@@ -231,12 +237,12 @@ where
         // then we have an extra black that we need to add.
         let mut add_black = false;
         if let Some(node) = zipper.node {
-            if node.left.0.is_some() {
-                zipper.node = node.left.0.map(|x| context.unpack(x));
-                add_black = node.left.1 == Color::Black;
+            if let Some((n, c)) = node.left {
+                add_black = c == Color::Black;
+                zipper.node = Some(context.unpack(n));
             } else {
-                zipper.node = node.right.0.map(|x| context.unpack(x));
-                add_black = node.right.1 == Color::Black;
+                add_black = color(&node.right) == Color::Black;
+                zipper.node = node.right.map(|(n, _)| context.unpack(n));
             }
         }
 
@@ -252,7 +258,7 @@ where
                         }
                         Color::Black => {
                             // This is the "double-black" case.
-                            let sibling_color = s.sibling.1;
+                            let sibling_color = color(&s.sibling);
                             match sibling_color {
                                 Color::Black => {
                                     // Start by focusing the zipper on the sibling.
@@ -260,20 +266,20 @@ where
                                     let sibling_direction = s.step.0.opposite();
                                     zipper.path.push(ZipperStep {
                                         data: s.data,
-                                        step: (sibling_direction, s.sibling.1),
-                                        sibling: (node.map(|x| context.pack(x)), s.step.1),
+                                        step: (sibling_direction, color(&s.sibling)),
+                                        sibling: node.map(|x| (context.pack(x), Color::Black)),
                                     });
-                                    // The black height invariant ensures that
-                                    // the sibling is never empty. Since we have
-                                    // a double black edge, each path down
-                                    // the sibling must have at least two black
-                                    // edges, but if the sibling were empty, it
-                                    // would be only one.
-                                    let node = context.unpack(s.sibling.0.unwrap());
+                                    // Unwrap: The black height invariant
+                                    // ensures that the sibling is never empty.
+                                    // Since we have a double black edge, each
+                                    // path down the sibling must have at least
+                                    // two black edges, but if the sibling were
+                                    // empty, it would be only one.
+                                    let node = context.unpack(s.sibling.unwrap().0);
                                     let mut red_direction = None;
-                                    if node.left.1 == Color::Red {
+                                    if color(&node.left) == Color::Red {
                                         red_direction = Some(Direction::Left);
-                                    } else if node.right.1 == Color::Red {
+                                    } else if color(&node.right) == Color::Red {
                                         red_direction = Some(Direction::Right);
                                     }
                                     zipper.node = Some(node);
@@ -307,10 +313,11 @@ where
                                 }
                                 Color::Red => {
                                     // Red sibling, rebuild this tree and loop.
-                                    // On the next iteration, we'll always fall into
-                                    // a black sibling case and make progress up the tree.
-                                    // Sibling is never empty because it is red.
-                                    let unpacked_sibling = context.unpack(s.sibling.0.unwrap());
+                                    // On the next iteration, we'll always fall
+                                    // into a black sibling case and make
+                                    // progress up the tree.  Unwrap: Sibling is
+                                    // never empty because it is red.
+                                    let unpacked_sibling = context.unpack(s.sibling.unwrap().0);
                                     match s.step.0 {
                                         Direction::Left => {
                                             zipper.path.push(ZipperStep {
@@ -361,7 +368,7 @@ where
 struct ZipperStep<T, N> {
     data: T,
     step: (Direction, Color),
-    sibling: (Option<N>, Color),
+    sibling: Option<(N, Color)>,
 }
 
 struct Zipper<T, N> {
@@ -375,17 +382,17 @@ impl<T, N> Zipper<T, N> {
         P: FnMut(RedBlackData<T, N>) -> N,
     {
         if let Some(step) = self.path.pop() {
-            let packed_node = self.node.take().map(pack);
+            let link = self.node.take().map(|x| (pack(x), step.step.1));
             self.node = Some(match step.step.0 {
                 Direction::Left => RedBlackData {
                     data: step.data,
-                    left: (packed_node, step.step.1),
+                    left: link,
                     right: step.sibling,
                 },
                 Direction::Right => RedBlackData {
                     data: step.data,
                     left: step.sibling,
-                    right: (packed_node, step.step.1),
+                    right: link,
                 },
             });
         }
@@ -400,18 +407,18 @@ impl<T, N> Zipper<T, N> {
                 Direction::Left => {
                     self.path.push(ZipperStep {
                         data: n.data,
-                        step: (Direction::Left, n.left.1),
+                        step: (Direction::Left, color(&n.left)),
                         sibling: n.right,
                     });
-                    self.node = n.left.0.map(unpack);
+                    self.node = n.left.map(|(n, _)| unpack(n));
                 }
                 Direction::Right => {
                     self.path.push(ZipperStep {
                         data: n.data,
-                        step: (Direction::Right, n.right.1),
+                        step: (Direction::Right, color(&n.right)),
                         sibling: n.left,
                     });
-                    self.node = n.right.0.map(unpack);
+                    self.node = n.right.map(|(n, _)| unpack(n));
                 }
             }
         }
@@ -455,6 +462,14 @@ impl<T, N> Zipper<T, N> {
     }
 }
 
+#[inline(always)]
+fn color<N>(link: &Option<(N, Color)>) -> Color {
+    match link {
+        Some((_, c)) => *c,
+        None => Color::Black,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -483,18 +498,22 @@ mod tests {
 
     impl PackContext<i32, Node> for () {
         fn pack(&mut self, data: RedBlackData<i32, Node>) -> Node {
+            let left_color = color(&data.left);
+            let right_color = color(&data.right);
             Node {
                 data: data.data,
-                left: (data.left.0.map(Box::new), data.left.1),
-                right: (data.right.0.map(Box::new), data.right.1),
+                left: (data.left.map(|(n, _)| Box::new(n)), left_color),
+                right: (data.right.map(|(n, _)| Box::new(n)), right_color),
             }
         }
 
         fn unpack(&mut self, node: Node) -> RedBlackData<i32, Node> {
+            let left_color = node.left.1;
+            let right_color = node.right.1;
             RedBlackData {
                 data: node.data,
-                left: (node.left.0.map(|x| *x), node.left.1),
-                right: (node.right.0.map(|x| *x), node.right.1),
+                left: node.left.0.map(|x| (*x, left_color)),
+                right: node.right.0.map(|x| (*x, right_color)),
             }
         }
     }
